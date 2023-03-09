@@ -1,0 +1,364 @@
+/* --------------------------------- */
+/* CSS template for paged hazelnuts */
+/* --------------------------------- */
+
+/* -------------------- CSS variables ---------------------- */
+:root {
+    --background: whitesmoke;
+    --pagedjs-width: 210mm;
+    --pagedjs-height: 297mm;
+    --color-paper: white;
+    --color-mbox: rgba(0, 0, 0, 0.2);
+    --running-title-width: 2.5in;
+    --screen-pages-spacing: 5mm;
+    --main-color: #5E72E3;
+    --secondary-color: #5E72E3;
+    --main-font: "Arial";
+    --header-font: "Arial";
+  }
+
+/* ---------------------- For debugging -------------------- */
+/* two pages in a row if possible on screen */
+@media screen {
+  body {
+      background-color: var(--background);
+      margin: var(--screen-pages-spacing) auto 0 auto;
+  }
+  .pagedjs_pages {
+      display: flex;
+      max-width: calc(var(--pagedjs-width) * 2);
+      flex: 0;
+      flex-wrap: wrap;
+      margin: 0 auto;
+  }
+  .pagedjs_page {
+      background-color: var(--color-paper);
+      box-shadow: 0 0 0 1px var(--color-mbox);
+      flex-shrink: 0;
+      flex-grow: 0;
+      margin: auto auto var(--screen-pages-spacing) auto;
+  }
+}
+
+/* when a row can hold two pages, start first page on the right */
+@media screen and (min-width: 12.32in) {
+  .pagedjs_page {
+      margin: auto 0 var(--screen-pages-spacing) 0;
+  }
+  .pagedjs_first_page {
+      margin-left: var(--pagedjs-width);
+  }
+}
+
+/* ------------------------ Pages -------------------------- */
+/* page size */
+@page {
+    size: 210mm 297mm; /* var(--pagedjs-width) doesn't work in browser when printing */
+  }
+
+
+/* string variables */
+h1.title {
+  string-set: h1-title content(text);
+}
+
+.shorttitle1 {
+  string-set: h1-text content(text);
+}
+
+/* blank page */
+@page:blank{
+  @top-left{
+    display:none;
+  }
+
+  @top-center{
+    display: none;
+  }
+
+  @top-right{
+    display:none;
+  }
+}
+
+/* normal page */
+@page {
+
+}
+
+/* counter */
+@page:right {
+
+    @top-center {
+      content: "Confidential";
+      font-family: var(--header-font);
+      color: var(--main-color);
+    }
+
+    /* numbering */
+    @top-right {
+      content: string(h1-title) " | " counter(page);
+      font-size: 14pt;
+      font-weight: bold;
+      margin-left: 0cm;
+      color: var(--main-color);
+    }
+    
+    @bottom-center{
+      content: "Confidential";
+      font-family: var(--header-font);
+      color: var(--main-color);
+    }
+    
+}
+
+@page:left {
+
+    @top-center {
+      content: "Confidential";
+      font-family: var(--header-font);
+      color: var(--main-color);
+    }
+
+    /* numbering */
+    @top-left {
+      content: counter(page) " | " string(h1-text);
+      font-size: 14pt;
+      font-weight: bold;
+      color: var(--main-color);
+    }
+    
+    @bottom-center{
+      content: "Confidential";
+      font-family: var(--header-font);
+      color: var(--main-color);
+    }
+}
+
+
+/* ------------------------ Front Cover --------------------- */
+@page:first{
+    background-color: #ffffff;
+    background-image: url(../img/color-img.jpg), url(../img/color-img.jpg), var(--front-cover), var(--front-cover-2);
+    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
+    background-position: 5% 40%, 95% 40%, 4cm 24cm, 0cm 0cm ;
+    background-size:  5cm, 5cm, 3cm, cover;
+
+    @top-left-corner {
+      display: none;
+    }
+
+    @top-left {
+      display: none;
+    }
+
+    @top-center {
+      display: none;
+    }
+
+    @top-right {
+      display: none;
+    }
+
+    @top-right-corner {
+      display: none;
+    }
+
+    @bottom-right {
+      display: none;
+    }
+
+    @bottom-left {
+      display: none;
+    }
+  }
+
+/* ------------------------ Back Cover ---------------------- */
+@page back-cover {
+    margin: 0 0 0 0;
+    background-image: var(--back-cover), var(--back-cover-2);
+    background-repeat: no-repeat, no-repeat;
+    background-position: 8cm 20cm, 0cm 0cm;
+    background-size: 5cm, cover;
+}
+
+.back-cover {
+  page: back-cover;
+}
+
+/* ----------------------- Table of contents ----------------------- */
+.toc a {
+  line-height: 30px;
+  text-decoration: none;
+  font-size: 14pt;
+  padding-right: .33em;
+}
+
+.toc ul {
+    list-style: none;
+    padding-left: 0;
+    overflow-x: hidden;
+    margin-right: 0%;
+}
+
+.toc li li{
+  padding-left: 1em;
+}
+
+.toc ul, .toc a, .toc a::after {
+  background-color: #ffffff;
+  color: var(--main-color);
+  font-weight: bold;
+}
+
+.toc ul > li > ul > li > a {
+  color: #000000;
+}
+
+/* page number */
+.toc a::after {
+  content: target-counter(attr(href), page);
+  float: right;
+  background: white;
+}
+
+.toc a.front-matter-ref::after {
+  content: target-counter(attr(href), page, lower-roman);
+}
+
+.toc .leaders::before {
+  float: left;
+  width: 0;
+  white-space: nowrap;
+  content: ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . ";
+}
+
+/* numbering */
+
+@page:nth(2){
+  @top-left{
+    display:none;
+  }
+
+  @top-center{
+    display: none;
+  }
+}
+
+/* title */
+.toc-title {
+  padding-top: 0cm;
+  padding-bottom: 0cm;
+  background-color: transparent;
+  background-image: none;
+  text-align: left;
+  margin-right: 0%;
+  margin-left: 0%;
+  color: var(--main-color);
+  margin-top: 0%;
+}
+
+/* ------------------------ Fonts ---------------------------- */
+
+p, ul, a, ol {
+    font-family: var(--main-font);
+}
+
+h1, h2, h3, h4 {
+    font-family: var(--header-font);
+}
+
+/* ------------------------ Style ----------------------------- */
+/* colors */
+h2, h3, h4 {
+    color: var(--secondary-color)
+}
+
+h1.title, h2.date {
+    color: #ffffff;
+}
+
+/* headers */
+h1.title {
+  font-size: 45pt;
+  margin-top: 35%;
+  margin-left: 15%;
+  margin-right: 15%;
+  text-align: center;
+  font-weight: 600;
+  padding-bottom: 0;
+  padding-top: 0;
+  background-color: white;
+  border: white 1px solid;
+  color: #5E72E3;
+}
+
+h1.subtitle {
+  color: white;
+  font-size: 14pt;
+  font-weight: 300;
+  background: black;
+  margin-top: -45%;
+  margin-left: 65%;
+  margin-right: -20%;
+  padding-left: 0cm;
+  padding-right: 0.5cm;
+  padding-top: 0.5cm;
+  padding-bottom: 0.5cm;
+}
+
+h2.date {
+  margin-top: 129%;
+  margin-left: 74%;
+  font-size: 16px;
+}
+
+/* normal headers */
+h1 {
+  font-size: 20pt;
+  color: #ffffff;
+  text-align: center;
+  padding-top: 0.75cm;
+  padding-bottom: 0.75cm;
+  background-color: var(--secondary-color);
+  background-position: 5% 40%, 95% 40%;
+  background-size:  5cm, 5cm;
+  margin-right: -17%;
+  margin-left: -17%;
+  margin-top: -17%;
+}
+
+h2 {
+  font-size: 24pt;
+}
+
+/* --------------------- CSS Fragmentation --------------------------- */
+/* page breaks; aka CSS fragmentation */
+.level1 {
+    break-before: page;
+  }
+
+.section > h1, .section > h2, .section > h3, .section > h4, .section > h5, .section > h6 {
+  break-after: avoid;
+}
+.footenotes {
+  break-before: always;
+  break-after: always;
+}
+.figure {
+  break-inside: avoid;
+}
+
+/* do not break captions */
+caption {
+  break-inside: avoid;
+  break-after: avoid;
+}
+
+/* misc elements */
+.subtitle span {
+  font-size: .9em;
+}
+img {
+  max-width: 100%;
+}

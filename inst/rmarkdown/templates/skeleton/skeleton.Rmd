@@ -1,0 +1,1049 @@
+---
+title: "`r params$title`"
+subtitle: "Generate by Geneseng"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  genesengReport::geneseng_template
+knit: pagedown::chrome_print
+self_contained: True
+params:
+  title: NA
+  dataset: NA
+  target: NA
+toc-title: "Table of Contents"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+library(FactoMineR)
+library(flextable)
+library(genesengStats)
+library(ggplot2)
+library(ggprism)
+library(gridExtra)
+library(pROC)
+library(reshape2)
+library(tibble)
+```
+
+```{r}
+# Define params
+df <- params$dataset
+names(df) <- make.names(names(df))
+n <- apply(df, 2, function(x) length(unique(x)))
+```
+
+# Materials & Methods {.unnumbered}
+
+## Descriptive analysis {.unnumbered}
+
+The dataset was composed of **`r nrow(df)`** individuals and **`r ncol(df)`** variables. The **`r params$target`** variable was defined like the dependent (or target) variable.
+
+
+### Univariate and Bivariate analysis {.unnumbered}
+
+Continuous variables were expressed using the median (and interquartile range) or the mean (and standard deviation). A Shapiro-Wilk's test was used to evaluate the normal distribution. Categorical variables were described using proportion.
+
+A p-value less than 0.05 is statistically significant. 
+
+
+### Multivariate analysis {.unnumbered}
+
+Principal Component Analysis (PCA) was computed to evaluate the relationship between all continuous variables. Only the best 10 principal components were kept. Samples were colored by the dependent variable.
+
+
+### Statistical comparison {.unnumbered}
+
+Subjects were divided into two groups according to the dependent variable. Numerous tests were performed including parametric and non-parametric tests. For continuous variables, Mann-Whitney test, F-test, T-test or Welch-test might be used. For categorical variables, the relationships were tested using Chi-squared test, Fisher's exact test or McNemar's test.
+
+
+A p-value less than 0.05 is statistically significant. 
+
+
+### Correlation {.unnumbered}
+
+Correlation of continuous features were assessed using Spearman rank correlation coefficient. Biserial point correlation was performed to evaluate correlation between continuous and categorical features. Spearman rank correlation coefficient was measures too. To categorical features, relationship was tested using a chi-squared test.
+
+
+### Performance {.unnumbered}
+
+Features were quickly prototyped using a simple logistic regression model. True Positive (TP) and True Negative (TN) cases were optimized according to the best cut-off. Best cut-off was computed according to Youden index or Closest toplest methods [1-2].
+
+Youden index defines the best cut-off by maximizing the distance to the identity (diagonal) line. That is to say, Youden index maximizes the best (Sensitivity;Specificity) couple.
+
+$$Youden\ index = \sum_{k=1}^n Max(Sensitivities_k + Specificities_k)$$
+Closest toplest defines the optimal threshold located to the top-left part of the plot with perfect sensitivity or specificity. The cut-off is computed minimizing the sum of squares of (1-Sensitivity;1-Specificity) couple.
+
+$$Closest\ toplest = \sum_{k=1}^n Min((1 - sensitivities)² + (1 - Specificities)²)$$
+Receiver-operating characteristic (ROC) curves were computed to evaluate the capacity of the features to discriminate subjects. A feature whose predictions are 100% true has an AUC of 1. Bad feature has an AUC close to 0.5.
+
+\pagebreak
+
+# Results {.unnumbered}
+
+## Preliminary statistics {.unnumbered}
+
+### Global statistics {.unnumbered}
+
+```{r}
+stats <- geneseng_summary_stats(data = df)
+
+stats[[1]][1:7] %>%
+  flextable() %>%
+  width(width = 2) %>%
+  fontsize(size = 9, part = "header") %>%
+  fontsize(size = 9, part = "body") %>%
+  set_caption("Summary statistics of variables (Continuous variables #1)")
+```
+
+<br>
+
+```{r}
+stats[[1]][c(1, 8:12)] %>%
+  flextable() %>%
+  width(width = 2) %>%
+  fontsize(size = 10, part = "header") %>%
+  fontsize(size = 10, part = "body") %>%
+  flextable::footnote(
+      i = 1,  
+      j = 4, 
+      part = "header", 
+      value = as_paragraph("Number of missing values"),
+      ref_symbols = "1"
+    ) %>% 
+  flextable::footnote(
+      i = 1,  
+      j = 5, 
+      part = "header", 
+      value = as_paragraph("Follow normal distribution if p-value > 0.05."),
+      ref_symbols = "2"
+    ) %>% 
+  set_caption("Summary statistics of variables (Continuous variables #2)")
+```
+
+
+\pagebreak
+
+```{r}
+if(!is.null(stats[[2]])){
+  stats[[2]] %>%
+    flextable() %>%
+    fontsize(size = 10, part = "header") %>%
+    fontsize(size = 10, part = "body") %>%
+    width(width = 2) %>%
+    set_caption("Summary statistics of variables (Categorial variables)")
+}
+```
+
+\pagebreak
+
+```{r}
+global_distrib <- melt(df[, n > 7])
+
+p <- ggplot(data = global_distrib, mapping = aes(x = variable, y = value, fill = variable)) +
+  geom_boxplot(outlier.colour = "#D6D6D6", outlier.size = 3) + 
+  labs(
+    x = NULL, 
+    title = "Global distribution", 
+    subtitle = "Continuous variables \n"
+  ) +
+  theme_prism(axis_text_angle = 45, base_size = 12) +
+  scale_fill_prism(palette = "black_and_white") +
+  theme(legend.position = "none")
+
+print(p)
+```
+
+<br>
+
+```{r}
+p <- ggplot(data = global_distrib, mapping = aes(x = variable, y = value, fill = variable)) +
+  geom_boxplot(outlier.colour = "#D6D6D6", outlier.size = 3) +
+  labs(
+    x = NULL, 
+    y = "log(value)",
+    title = "Global distribution", 
+    subtitle = "Continuous variables \n"
+  ) +
+  scale_y_log10() +
+  theme_prism(axis_text_angle = 45, base_size = 12) +
+  scale_fill_prism(palette = "black_and_white") +
+  theme(legend.position = "none")
+
+print(p)
+```
+
+
+```{r fig.height = 4, fig.width = 6}
+categ <- stats[[2]]
+
+for(i in 1:ncol(df)){
+  
+  if(length(unique(df[,i])) > 7){
+    
+    shap <- signif(shapiro.test(df[,i])$p.value, 2)
+    
+    p <- ggplot(data = df, aes(x = get(names(df)[i]))) +
+      geom_density(fill="#a0a0a4") +
+      scale_fill_prism(palette = "black_and_white") +
+      theme_prism(base_size = 12) +
+      labs(
+        x = NULL,
+        y = "Density",
+        title = paste(
+          "Distribution of", 
+          names(df)[i]
+        ), 
+        subtitle = paste0(
+          "Shapiro's test p-value = ", 
+          shap, 
+          ", on ", 
+          length(na.omit(df[,i])), 
+          " obs. \n"
+        ) 
+      )
+    
+    print(p)
+    
+  } else {
+    
+    newdata <- categ[categ$biomarker == names(df)[i], ]
+    
+    p <- ggplot(
+      data = newdata, 
+      mapping = aes(
+        x = value, 
+        y = n, 
+        fill = factor(value)
+        )
+      ) + 
+      geom_col() + 
+      labs(
+        title = paste("Distribution of", names(df)[i], "variable"), 
+        subtitle = paste("The variable is composed of", length(na.omit(df[,i])), "obs."), 
+        x = NULL
+      ) + 
+      scale_fill_prism(palette = "black_and_white") +
+      theme_prism(base_size = 12, axis_text_angle = 45) +
+      theme(legend.position = "bottom")
+     
+     print(p)
+     
+  }
+  
+}
+```
+
+\pagebreak
+
+### Statistics by group {.unnumbered}
+
+```{r}
+stats_byGroup <- geneseng_summary_stats(data = df, group = params$target)
+```
+
+
+```{r}
+if(!is.null(stats_byGroup[[1]])){
+  stats_byGroup[[1]][c(1, 2:7)] %>%
+    flextable() %>%
+    width(width = 2) %>%
+    fontsize(size = 9, part = "header") %>%
+    fontsize(size = 9, part = "body") %>%
+    set_caption("Summary statistics by group (Continuous variables #1)")
+}
+```
+
+<br>
+
+```{r}
+if(!is.null(stats_byGroup[[1]])){
+  stats_byGroup[[1]][c(1, 2,8:13)] %>%
+    flextable() %>%
+    width(width = 2) %>%
+    fontsize(size = 9, part = "header") %>%
+    fontsize(size = 9, part = "body") %>%
+    flextable::footnote(
+      i = 1,  
+      j = 5, 
+      part = "header", 
+      value = as_paragraph("Number of missing values"),
+      ref_symbols = "1"
+    ) %>% 
+    flextable::footnote(
+      i = 1,  
+      j = 6, 
+      part = "header", 
+      value = as_paragraph("Follow normal distribution if p-value > 0.05."),
+      ref_symbols = "2"
+    ) %>% 
+    set_caption("Summary statistics by group (Continuous variables #2)")
+}
+```
+
+\pagebreak
+
+```{r}
+if(!is.null(stats_byGroup[[2]])){
+  stats_byGroup[[2]] %>%
+    flextable() %>%
+    fontsize(size = 10, part = "header") %>%
+    fontsize(size = 10, part = "body") %>%
+    width(width = 2) %>%
+    set_caption("Summary statistics by group")
+}
+```
+
+\pagebreak
+
+```{r fig.height = 4, fig.width = 6}
+if(!is.null(stats_byGroup[[1]])){
+  
+  newdata <- lapply(1:length(levels(factor(df[, params$target]))), function(x) {
+    df[df[, params$target] == levels(factor(df[, params$target]))[x], ]
+  })
+  
+  res <- NULL
+  for(i in 1:length(newdata)){
+    tmp <- newdata[[i]]
+    for(i in 1:ncol(tmp)){
+      if(length(unique(tmp[,i])) > 7){
+        pvalue <- signif(shapiro.test(tmp[,i])$p.value, 2)
+        res <- c(res, pvalue)
+      }
+    }
+  } 
+  
+  mtx <- matrix(data = res, ncol = length(newdata), byrow = FALSE)
+  tmp <- df[, which(n > 7), drop = FALSE]
+  
+  for(i in -1:ncol(tmp)){
+    
+    newdf2 <- cbind(tmp, target = df[, params$target])
+    newdf3 <- melt(newdf2, id = "target")
+    
+    if(i == -1){
+      
+      p <- ggplot(data = newdf3, aes(x = variable, y = value, fill = factor(target))) +
+        geom_boxplot() +
+        scale_fill_prism(palette = "black_and_white") +
+        labs(
+          x = NULL,
+          title = "Global distribution", 
+          subtitle = "Continuous variables", 
+        ) +
+        theme_prism(base_size = 12, axis_text_angle = 45) +
+        theme(
+          legend.position = "bottom",
+          plot.subtitle = element_text(size = 8)
+        )
+      
+      print(p)
+      
+    } else if(i == 0){
+      
+      p1 <- ggplot(data = newdf3, aes(x = variable, y = value, fill = factor(target))) +
+        geom_boxplot() +
+        scale_y_log10() +
+        scale_fill_prism(palette = "black_and_white") +
+        labs(
+          title = "Global distribution", 
+          subtitle = "Continuous variables", 
+          x = NULL, 
+          y = "log(value)"
+        ) +
+        theme_prism(base_size = 12, axis_text_angle = 45) +
+        theme(
+          legend.position = "bottom",
+          plot.subtitle = element_text(size = 8)
+        )
+      
+      print(p1)
+      
+    } else {
+      
+      p <- ggplot(
+        data = df, 
+        mapping = aes(
+          x = get(names(tmp)[i]), 
+          fill = factor(get(params$target))
+          )
+        ) + 
+        geom_density(alpha = 0.9) +
+        scale_fill_prism(palette = "black_and_white") +
+        labs(
+          title = paste("Distribution of", names(tmp)[i]), 
+          subtitle = toString(paste0(levels(factor(df[,params$target])), " - Shapiro's test p-value = ", mtx[i,])), 
+          x = NULL, 
+          y = "Density"
+        ) + 
+        theme_prism(base_size = 12) +
+        theme(
+          legend.position = "bottom",
+          plot.subtitle = element_text(size = 8)
+        )
+    
+    print(p)
+    
+    }
+  }
+}
+```
+
+\pagebreak
+
+
+```{r}
+# Plot categorical variable by group
+if(!is.null(stats_byGroup[[2]])){
+  
+  tmp <- stats_byGroup[[2]]
+  
+  for(i in 1:length(unique(tmp$biomarker))){
+    
+    p <- ggplot(
+      data = df, 
+      mapping = aes(
+        x = factor(get(as.character(unique(tmp$biomarker))[i])), 
+        fill = factor(get(as.character(params$target)))
+        )
+      ) + 
+      geom_bar(position = "dodge") + 
+      labs(
+        x = NULL, 
+        title = paste("Distribution of", unique(tmp$biomarker)[i])
+      ) + 
+      scale_fill_prism(palette = "black_and_white") +
+      theme_prism(base_size = 12) + 
+      theme(
+        legend.position = "bottom"
+      )
+    
+    print(p)
+    
+  }
+}
+```
+
+
+### Variable Contribution (PCA) {.unnumbered}
+
+```{r}
+if(!is.null(stats[[1]]) & ncol(stats[[1]]) >= 2) {
+  res_pca <- PCA(df, graph = FALSE, quali.sup = which(!(n > 7)), ncp = 10)
+  var_pca <- res_pca[["var"]]
+
+  var_pca$contrib %>%
+    apply(2, round, 2) %>%
+    as.data.frame() %>%
+    rownames_to_column(var = " ") %>%
+    flextable() %>%
+    fontsize(size = 8, part = "header") %>%
+    fontsize(size = 8, part = "body") %>%
+    width(width = 2) %>%
+    set_caption("Principal Component Analysis - Variable contribution (%)")
+  
+}
+```
+
+
+```{r}
+if(!is.null(stats[[1]]) & ncol(stats[[1]]) >= 2) {
+  
+  # Explained Variances
+  eig_values <- res_pca$eig
+  explained_var <- data.frame(comp = rownames(eig_values), var = eig_values[,2])
+  
+  p <- ggplot(data = explained_var, mapping = aes(x = comp, y = var, fill = comp)) +
+    geom_col()  + 
+    scale_fill_prism(palette = "black_and_white") +
+    labs(
+      title = "Explained Variances", 
+      subtitle = "Distribution of principal components \n", 
+      x = "Principal Components", 
+      y = "% of variances"
+    ) + 
+    theme_prism(base_size = 12, axis_text_angle = 45) +
+    theme(legend.position = "none")
+  
+  print(p)
+  
+  
+  # Individuals
+  ind_pca <- res_pca[["ind"]]
+  pos_ind_pca <- ind_pca$coord
+  combs <- combn(x = ncol(pos_ind_pca), m = 2, simplify = FALSE)
+  
+  for(i in combs){
+    
+    tmp <- cbind.data.frame(pos_ind_pca[,i], target = df[,params$target])
+    
+    p <- ggplot(
+      data = tmp, 
+      mapping = aes(
+        x = get(colnames(tmp)[1]), 
+        y = get(colnames(tmp)[2]), 
+        col = factor(target)
+        )
+      ) + 
+      geom_point() +
+      scale_color_prism(palette = "black_and_white") +
+      labs(
+        title = "PCA graph of individuals", 
+        subtitle = paste(paste0("Dim.", i[1]), "&", paste0("Dim.", i[2])), 
+        x = paste(colnames(pos_ind_pca)[i[1]], paste0("(", round(eig_values[i[1],2], 2), "%)")), 
+        y = paste(colnames(pos_ind_pca)[i[2]], paste0("(", round(eig_values[i[2],2], 2), "%)"))
+      ) + 
+      theme_prism(base_size = 12) +
+      theme(legend.position = "bottom")
+    
+    print(p)
+    
+  }
+  
+}
+```
+
+\pagebreak
+
+## Statistical tests {.unnumbered}
+
+### Continuous variables {.unnumbered}
+
+```{r}
+test <- geneseng_summary_tests(data = df, group = params$target)
+```
+
+
+```{r}
+test01 <- test[[1]]
+
+if(!is.null(test[[1]])){
+  test01 %>%
+  flextable() %>%
+  fontsize(size = 9, part = "header") %>%
+  fontsize(size = 9, part = "body") %>%
+  width(width = 2) %>%
+  set_caption("Overview of statistical tests for continuous variables")
+} else {
+  print("No data available.")
+}
+```
+
+
+```{r fig.height = 4, fig.width = 6}
+if(!is.null(test01)){
+  
+  for(i in 1:nrow(test01)){
+    
+    two.means <- tribble(
+      ~group1, 
+      ~group2, 
+      ~p,     
+      ~y.position,
+      levels(factor(df[,params$target]))[1], 
+      levels(factor(df[,params$target]))[2], 
+      test01$`Mann-Whitney's test`[i], 
+      max(df[,test01$biomarker[i]]) * 1.04
+    )
+    
+    p <- ggplot(
+      data = df, 
+      mapping = aes(
+        x = factor(get(params$target)), 
+        y = get(test01$biomarker[i])
+        )
+      ) + 
+      geom_boxplot(fill = c("black", "#A0A0A4")) + 
+      add_pvalue(two.means, tip.length = 0) +
+      scale_fill_prism(palette = "black_and_white") +
+      stat_summary(fun = "mean", color = "red", fill = "red", shape = 18) +
+      labs(
+        title = paste0(names(df)[i]),
+        subtitle = "Mann-Whiteny's test was used to evaluate means",
+        x = NULL,
+        y = "value"
+      ) +
+      theme_prism(base_size = 12, axis_text_angle = 45)
+      
+      print(p)
+    
+  }
+  
+}
+```
+
+\pagebreak
+
+### Categorical variables {.unnumbered}
+
+```{r}
+if(is.null(test[[2]])){
+  print("No data available.")
+} else {
+  test[[2]] %>%
+  flextable() %>%
+  width(width = 2) %>%
+  set_caption("Overview of statistical tests for categorical variables")
+}
+```
+
+
+```{r}
+if(!is.null(stats_byGroup[[2]])){
+  
+  tmp <- stats_byGroup[[2]]
+  
+  for(i in 1:length(unique(tmp$biomarker))){
+    
+    p <- ggplot(
+      data = df, 
+      mapping = aes(
+        x = factor(get(as.character(unique(tmp$biomarker))[i])), 
+        fill = factor(get(params$target))
+        )
+     ) + 
+      geom_bar(position = "dodge") + 
+      scale_fill_prism(palette = "black_and_white") +
+      labs(
+        x = as.character(unique(tmp$biomarker))[i], 
+        title = paste0("Comparison by group (", unique(tmp$biomarker)[i], ")"),
+      ) + 
+      theme_prism(base_size = 12, axis_text_angle = 45) + 
+      theme(legend.position = "bottom")
+    
+    print(p)
+    
+  }
+}
+```
+
+
+\pagebreak
+
+## Correlations {.unnumbered}
+
+```{r}
+corr <- geneseng_summary_corr(data = df)
+```
+
+### Continuous relationships {.unnumbered}
+
+```{r}
+corr01 <- corr[[1]]
+
+if(is.null(corr01)){
+  print("No data available.")
+} else {
+  corr01 %>%
+  flextable() %>%
+  width(width = 2) %>% 
+  set_caption("Summary of continuous correlations")
+}
+```
+
+
+```{r fig.height = 6, fig.width = 8}
+if(is.null(corr01)){
+  print("No data available.")
+} else {
+
+  vars <- unique(c(corr01$Var1, corr01$Var2))
+  newCor <- cor(df[,vars], method = "spearman", use = "pairwise.complete.obs")
+  newCor <- apply(newCor, 2, round, digits = 3)
+  newCor[lower.tri(newCor)] <- NA
+  
+  cormat <- melt(as.matrix(newCor), na.rm = TRUE)
+  
+  p <- ggplot(cormat, aes(Var2, Var1, fill = value)) + 
+    geom_tile() + 
+    geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+    labs(
+      x = NULL,
+      y = NULL, 
+      title = "Correlation matrix", 
+      subtitle = "Spearman correlation analysis \n"
+   ) + 
+    scale_fill_gradient2(low = "#FF595E", mid = "white", high = "#5E72E3") +
+    theme_prism(base_size = 12, axis_text_angle = 45) +
+    theme(
+      legend.position = "none"
+    )
+  
+  print(p)
+  
+}
+```
+
+\pagebreak
+
+```{r fig.height = 4, fig.width = 6}
+if(!is.null(corr01)){
+  
+  for(i in 1:nrow(corr01)){
+    
+    newdata <- df[, as.vector(unlist(corr01[i,1:2]))]
+    
+    p <- ggplot(
+      data = newdata, 
+      mapping = aes(
+        x = get(names(newdata)[1]), 
+        y = get(names(newdata)[2])
+      )
+    ) +
+      geom_point() +
+      labs(
+        x = names(newdata)[1],
+        y = names(newdata)[2],
+        title = paste(names(newdata)[1], "&", names(newdata)[2]), 
+        subtitle = paste("Spearman's coefficient =", corr01[i, "coeff"]), 
+        col = NULL
+      ) +
+      theme_prism(base_size = 12)
+    
+    print(p)
+    
+  }
+  
+}
+```
+
+\pagebreak
+
+### Continuous & Categorical relationships {.unnumbered}
+
+```{r}
+corr02 <- corr[[2]]
+
+if(is.null(corr02)){
+  print("No data available.")
+} else {
+  corr02 %>%
+  flextable() %>%
+  width(width = 2) %>% 
+  set_caption("Summary of continuous-categorical correlations")
+}
+```
+
+
+```{r}
+if(is.null(corr02)){
+  
+  print("No data available.")
+  
+} else {
+  
+  mtx <- matrix(
+    data = corr02$coeff,
+    ncol = length(unique(corr02$Var1)), 
+    nrow = length(unique(corr02$Var2)), 
+    byrow = FALSE
+  )
+  
+  colnames(mtx) <- unique(corr02$Var1)
+  rownames(mtx) <- unique(corr02$Var2)
+  
+  idx <- split(x = 1:nrow(mtx), f = ceiling(1:nrow(mtx) / 5))
+  
+  for(i in 1:length(idx)){
+    
+  newMTX <- mtx[idx[[i]],, drop = FALSE]
+  cormat <- melt(as.matrix(newMTX), na.rm = TRUE)
+  
+  p <- ggplot(cormat, aes(Var1, Var2, fill = value)) + 
+    geom_tile() + 
+    geom_text(aes(Var1, Var2, label = value), color = "black", size = 4) +
+    labs(
+      x = NULL,
+      y = NULL, 
+      title = "Correlation matrix", 
+      subtitle = "Spearman correlation analysis \n"
+    ) + 
+    scale_fill_gradient2(low = "#FF595E", mid = "white", high = "#5E72E3") +
+    theme_prism(base_size = 12, axis_text_angle = 45) +
+    theme(
+      legend.position = "none"
+    )
+  
+  print(p)
+    
+  }
+  
+}
+```
+
+\pagebreak
+
+```{r fig.height = 4, fig.width = 6}
+if(!is.null(corr02)){
+  
+  for(i in 1:nrow(corr02)){
+  
+  newdata <- corr02[i,]
+  
+  df[, newdata[,"Var1"]] <- as.factor(df[, newdata[,"Var1"]])
+
+  p <- ggplot(data = df, aes(x = get(newdata[,"Var1"]), y = get(newdata[,"Var2"]), group = 1)) +
+    geom_point() +
+    stat_summary(aes(get(newdata[,"Var1"]), get(newdata[,"Var2"])), geom = "point", fun = mean, shape = 16, col = "red") + 
+    stat_summary(aes(get(newdata[,"Var1"]), get(newdata[,"Var2"])), geom = "line", fun = mean, col = "grey") +
+    labs(
+      x = newdata[,"Var1"],
+      y = newdata[,"Var2"],
+      title = "Point biserial correlation", 
+      subtitle = paste0(
+        "Spearman's coefficient (", 
+        newdata[,"Var1"],
+        " & ", 
+        newdata[,"Var2"],
+        ") = ", 
+        newdata[,"coeff"],
+        "\n"
+      )
+    ) + 
+    theme_prism(base_size = 12)
+  
+  print(p)
+  
+  }
+  
+}
+```
+
+\pagebreak
+
+### Categorical relationships {.unnumbered}
+
+```{r}
+corr03 <- corr[[3]]
+
+if(is.null(corr03)){
+  print("No data available.")
+} else {
+  corr03 %>%
+  as.data.frame() %>%
+  rownames_to_column(var = " ") %>%
+  flextable() %>%
+  width(width = 2) %>%
+  set_caption("Summary of categorical correlations")
+}
+```
+
+\pagebreak
+
+## Performances {.unnumbered}
+
+### Model & Best Features  {.unnumbered}
+
+```{r}
+best_model <- geneseng_best_model(data = df, group = params$target)
+
+best_model %>%
+  flextable() %>%
+  fontsize(size = 8, part = "header") %>%
+  fontsize(size = 8, part = "body") %>%
+  width(width = 2) %>%
+  set_caption("Model & best features")
+```
+
+\pagebreak
+
+```{r fig.height=6, fig.width=8}
+newdf <- df
+newdf[,params$target] <- as.integer(factor(newdf[,params$target]))
+
+## Best model
+form <- as.formula(paste(params$target, "~", "."))
+glm_model <- glm(form, data = newdf)
+best_model <- step(object = glm_model, direction = "backward", trace = 0)
+best_model_roc <- roc(best_model$y, best_model$fitted.values, ci = TRUE)
+
+df_model <- data.frame(
+  name = "Model",
+  sens = best_model_roc$sensitivities,
+  spec = 1 - best_model_roc$specificities
+)
+
+## Best features
+label <- ifelse(
+  best_model_roc[["direction"]] == ">",
+  yes = levels(factor(df[,params$target]))[1],
+  no = levels(factor(df[,params$target]))[2]
+)
+
+n <- names(best_model[["model"]])[-1]
+
+lst <- lapply(n, function(x){
+  singular_roc <- roc(
+    response = df[, params$target],
+    predictor = df[,x],
+    direction = best_model_roc[["direction"]]
+  )
+  data.frame(
+    name = x,
+    sens = singular_roc$sensitivities,
+    spec = 1 - singular_roc$specificities
+  )
+})
+
+dff <- do.call(rbind, lst)
+df2 <- rbind(df_model, dff)
+
+df2$name <- factor(df2$name, levels = unique(df2$name))
+
+intercept <- seq(from = 0, to = 1, by = 1/6)
+
+colors <- rep(
+  c("#5E72E3", "#FF595E", "#FFCA3A", "#8AC926", "#FB5607", "#00bbf9"),
+  length.out = length(unique(df2$name))
+)
+
+p <- ggplot(data = df2, mapping = aes(x = spec, y = sens)) +
+  geom_path(aes(color = name), size = 1) +
+  scale_color_manual(values = colors) +
+  geom_point(colour = "black", fill = "white", shape = 21, size = 1) +
+  facet_wrap(name ~ ., ncol = 4) +
+  labs(
+    x = "1 - Specificities",
+    y = "Sensitivities",
+    title = "Model & Features",
+    subtitle = paste0("'", label, "' is used as positive case \n"),
+    color = NULL,
+    alpha = NULL
+  ) +
+  theme_prism(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, size = 8),
+    axis.text.y = element_text(size = 8)
+  )
+
+print(p)
+```
+
+\pagebreak
+
+### Classification {.unnumbered}
+
+```{r}
+res <- geneseng_summary_class_metrics(data = df, group = params$target)
+
+res2 <- res[,c("biomarker", "class1", "class2", "model", "TP", "FP", "TN", "FN")] %>%
+  flextable() %>%
+  fontsize(size = 10, part = "header") %>%
+  fontsize(size = 10, part = "body") %>%
+  width(width = 2) %>%
+  set_caption("Summary of individual performances (Confusion Matrix)")
+
+res2
+```
+
+\pagebreak
+
+```{r}
+# Clinical metrics
+res[,c(1,5:10)] %>%
+  flextable() %>%
+  fontsize(size = 8, part = "header") %>%
+  fontsize(size = 8, part = "body") %>%
+  width(width = 2) %>%
+  set_caption("Summary of individual performances (Balanced case #1)")
+```
+
+<br>
+
+```{r}
+res[,c(1,5:7, 11:14)] %>%
+  flextable() %>%
+  fontsize(size = 8, part = "header") %>%
+  fontsize(size = 8, part = "body") %>%
+  width(width = 2) %>%
+  set_caption("Summary of individual performances (Balanced case #2)")
+```
+
+
+\pagebreak
+
+```{r}
+res2 <- res[,c("biomarker", "class1", "class2", "balanced.accuracy", "precision", "f1")] %>%
+  flextable() %>%
+  fontsize(size = 10, part = "header") %>%
+  fontsize(size = 10, part = "body") %>%
+  width(width = 2) %>%
+  set_caption("Summary of individual performances (Imbalanced case)")
+
+res2
+```
+
+\pagebreak
+
+```{r fig.height = 4, fig.width = 6}
+for(i in 1:nrow(res)){
+  
+  curve <- suppressMessages({
+    roc(
+      response = df[, params$target], 
+      predictor = df[, as.character(res$biomarker[i])], 
+      direction = "auto", 
+      ci = TRUE
+    )
+  })
+  
+  p1 <- ggroc(curve) +
+    scale_fill_prism(palette = "black_and_white") +
+    labs(
+      x = "Specificities", 
+      y = "Sensitivities", 
+      title = paste0("ROC (", res$biomarker[i], ")"), 
+      subtitle = paste0(
+        "AUC = ", 
+        round(x = curve$ci[2], digits = 3), 
+        " (", 
+        round(x = curve$ci[1], digits = 3), 
+        "-", 
+        round(x = curve$ci[3], digits = 3), ")")
+    ) + 
+    theme_prism(base_size = 10)
+  
+  df.mtx <- data.frame(
+    Actual = factor(c(res$class1[1], res$class2[1], res$class1[1], res$class2[1])),
+    Predicted = factor(c(res$class1[1], res$class1[1], res$class2[1], res$class2[1])),
+    Y = c(res[i, "TP"], res[i, "FP"], res[i, "FN"], res[i, "TN"])
+  )
+  
+  rearrangeV <- df.mtx[c(3, 1, 4, 2), "Y"]
+  rearrangeL <- df.mtx[c(2, 1), "Actual"]
+  
+  p2 <- ggplot(data = df.mtx, mapping = aes(x = Predicted, y = Actual)) +
+    geom_tile(aes(fill = factor(rownames(df.mtx)))) + 
+    scale_colour_manual(
+      values = c(`1` = "#FFFFFF", `2` = "#5E72E3", `3` = "#5E72E3", `4` = "#FFFFFF"), 
+      aesthetics = "fill"
+    ) + 
+    geom_text(aes(label = rearrangeV), vjust = 1) + 
+    scale_y_discrete(labels = rearrangeL) + 
+    labs(
+      x = "Actual", 
+      y = "Predicted",
+      title = "Confusion Matrix", 
+      subtitle = paste(df.mtx[1,1], "is used as positive case")
+    ) + 
+    theme_prism(base_size = 10) +
+    theme(legend.position = "none")
+  
+  grid.arrange(p1, p2, ncol = 2, nrow = 1)
+  
+}
+```
+
+\pagebreak
+
+# Reference {.unnumbered}
+
+1 - W. J. Youden (1950) “Index for rating diagnostic tests”. Cancer, 3, 32–35. DOI: doi: 10.1002/1097-0142(1950)3:1<32::AID-CNCR2820030106>3.0.CO;2-3.
+
+2 - Neil J. Perkins, Enrique F. Schisterman (2006) “The Inconsistency of "Optimal" Cutpoints Obtained using Two Criteria based on the Receiver Operating Characteristic Curve”. American Journal of Epidemiology 163(7), 670–675. DOI: doi: 10.1093/aje/kwj063.
+

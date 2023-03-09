@@ -1,0 +1,28 @@
+Package: genesengReport
+Title: Pagedown template for generating a Geneseng report
+Version: 1.0.0
+Description: Generate a dynamic Rmarkdown report using a custom Pagedown template.
+Authors@R: 
+    person(given = "Alex",
+           family = "Yahiaoui Martinez",
+           role = c("aut", "cre"),
+           email = "yahiaoui-martinez.alex@outlook.com")
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: false
+RoxygenNote: 7.2.1
+Imports: 
+	FactoMineR,
+	flextable, 
+	ggplot2,
+	ggprism,
+	gridExtra,
+	knitr, 
+	pagedown,
+	pander,  
+	pROC,
+	raster,
+	rmarkdown,
+	tibble
+URL: https://github.com/geneseng/genesengReport
+BugReports: https://github.com/geneseng/genesengReport/issues
