@@ -14,7 +14,7 @@ The latest version can be installed from GitHub as follows:
 
 ``` r
 install.packages("devtools")
-devtools::install_github("alexym1/fusionchartsR")
+devtools::install_github("geneseng/genesengReport")
 ```
 
 ## Example

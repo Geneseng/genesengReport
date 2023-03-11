@@ -26,7 +26,7 @@ The latest version can be installed from GitHub as follows:
 
 ``` {r eval = FALSE}
 install.packages("devtools")
-devtools::install_github("geneseng/fusionchartsR")
+devtools::install_github("geneseng/genesengReport")
 ```
 
 ## Example
